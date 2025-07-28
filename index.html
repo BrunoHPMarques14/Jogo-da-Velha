@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Jogo da Velha</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Orbitron', sans-serif;
+      background-color: #0d0d0d;
+      color: #00fff7;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    h1 {
+      margin-top: 30px;
+      font-size: 2.5rem;
+      text-shadow: 0 0 10px #00fff7, 0 0 20px #00fff7;
+    }
+
+    .menu, .menuDificuldade {
+      margin-top: 40px;
+    }
+
+    .menu button, .menuDificuldade button, .controle button {
+      display: block;
+      margin: 15px auto;
+      padding: 15px 40px;
+      background-color: transparent;
+      color: #00fff7;
+      border: 2px solid #00fff7;
+      font-size: 1.2rem;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+      text-shadow: 0 0 8px #00fff7;
+    }
+
+    button:hover {
+      background-color: #00fff7;
+      color: #0d0d0d;
+      box-shadow: 0 0 20px #00fff7;
+    }
+
+    #tabuleiro {
+      display: grid;
+      grid-template-columns: repeat(3, 120px);
+      grid-template-rows: repeat(3, 120px);
+      gap: 10px;
+      justify-content: center;
+      margin-top: 40px;
+    }
+
+    .celula {
+      background-color: #1a1a1a;
+      border: 2px solid #00fff7;
+      box-shadow: 0 0 15px #00fff7;
+      font-size: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #00fff7;
+      transition: transform 0.2s ease;
+    }
+
+    .celula:hover {
+      background-color: #121212;
+      transform: scale(1.05);
+    }
+
+    #mensagem {
+      margin-top: 30px;
+      font-size: 1.5rem;
+      text-shadow: 0 0 10px #00fff7;
+    }
+
+    .controle {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Jogo da Velha</h1>
+
+  <div class="menu" id="menuInicial">
+    <button onclick="selecionarModo(false)">Jogar Local (2 Jogadores)</button>
+    <button onclick="mostrarDificuldades()">Jogar Contra IA</button>
+  </div>
+
+  <div class="menuDificuldade" id="menuDificuldade" style="display:none;">
+    <h2>Escolha a dificuldade</h2>
+    <button onclick="iniciarJogoIA('facil')">Fácil</button>
+    <button onclick="iniciarJogoIA('medio')">Médio</button>
+    <button onclick="iniciarJogoIA('dificil')">Difícil</button>
+  </div>
+
+  <div id="tabuleiro" style="display:none;"></div>
+  <div id="mensagem"></div>
+
+  <div class="controle" id="controles" style="display:none;">
+    <button onclick="reiniciarJogo(true)">Jogar Novamente</button>
+    <button onclick="voltarMenu()">Voltar</button>
+  </div>
+
+  <script>
+    const tabuleiro = document.getElementById("tabuleiro");
+    const mensagem = document.getElementById("mensagem");
+    const menu = document.getElementById("menuInicial");
+    const menuDificuldade = document.getElementById("menuDificuldade");
+    const controles = document.getElementById("controles");
+
+    let jogadorAtual = "X";
+    let jogoAtivo = true;
+    let estado = ["", "", "", "", "", "", "", "", ""];
+    let contraIA = false;
+    let nivelDificuldade = "facil";
+
+    const combinacoesVitoria = [
+      [0,1,2], [3,4,5], [6,7,8],
+      [0,3,6], [1,4,7], [2,5,8],
+      [0,4,8], [2,4,6]
+    ];
+
+    function selecionarModo(modoIA) {
+      contraIA = modoIA;
+      nivelDificuldade = "facil";
+      iniciarJogo();
+    }
+
+    function mostrarDificuldades() {
+      menu.style.display = "none";
+      menuDificuldade.style.display = "block";
+    }
+
+    function iniciarJogoIA(nivel) {
+      contraIA = true;
+      nivelDificuldade = nivel;
+      iniciarJogo();
+    }
+
+    function iniciarJogo() {
+      menu.style.display = "none";
+      menuDificuldade.style.display = "none";
+      tabuleiro.style.display = "grid";
+      controles.style.display = "block";
+      reiniciarJogo(true);
+    }
+
+    function criarTabuleiro() {
+      tabuleiro.innerHTML = "";
+      estado.forEach((valor, i) => {
+        const celula = document.createElement("div");
+        celula.classList.add("celula");
+        celula.dataset.index = i;
+        celula.textContent = valor;
+        celula.addEventListener("click", () => clicarCelula(i));
+        tabuleiro.appendChild(celula);
+      });
+    }
+
+    function clicarCelula(index) {
+      if (!jogoAtivo || estado[index] !== "" || (contraIA && jogadorAtual !== "X")) return;
+
+      estado[index] = jogadorAtual;
+      criarTabuleiro();
+      if (verificarVencedor(jogadorAtual)) return;
+
+      if (contraIA) {
+        jogadorAtual = "O";
+        mensagem.textContent = `Vez do jogador ${jogadorAtual}`;
+        setTimeout(jogadaIA, 400);
+      } else {
+        jogadorAtual = jogadorAtual === "X" ? "O" : "X";
+        mensagem.textContent = `Vez do jogador ${jogadorAtual}`;
+      }
+    }
+
+    function jogadaIA() {
+      if (!jogoAtivo) return;
+
+      let index;
+      if (nivelDificuldade === "facil") {
+        const livres = estado.map((v, i) => v === "" ? i : null).filter(i => i !== null);
+        index = livres[Math.floor(Math.random() * livres.length)];
+      } else if (nivelDificuldade === "medio") {
+        index = encontrarJogadaVencedora("O") || encontrarJogadaVencedora("X") || jogadaAleatoria();
+      } else {
+        index = melhorJogadaMinimax();
+      }
+
+      if (index !== null) {
+        estado[index] = "O";
+        criarTabuleiro();
+        if (!verificarVencedor("O")) {
+          jogadorAtual = "X";
+          mensagem.textContent = `Vez do jogador ${jogadorAtual}`;
+        }
+      }
+    }
+
+    function jogadaAleatoria() {
+      const livres = estado.map((v, i) => v === "" ? i : null).filter(i => i !== null);
+      return livres.length > 0 ? livres[Math.floor(Math.random() * livres.length)] : null;
+    }
+
+    function encontrarJogadaVencedora(jogador) {
+      for (let i = 0; i < estado.length; i++) {
+        if (estado[i] === "") {
+          estado[i] = jogador;
+          if (verificarVencedorSimulado(jogador)) {
+            estado[i] = "";
+            return i;
+          }
+          estado[i] = "";
+        }
+      }
+      return null;
+    }
+
+    function verificarVencedorSimulado(jogador) {
+      return combinacoesVitoria.some(([a, b, c]) => {
+        return estado[a] === jogador && estado[b] === jogador && estado[c] === jogador;
+      });
+    }
+
+    function melhorJogadaMinimax() {
+      function minimax(novoEstado, jogadorMax) {
+        const vencedor = checarVencedor(novoEstado);
+        if (vencedor) return { score: vencedor === "O" ? 1 : vencedor === "X" ? -1 : 0 };
+
+        const jogadas = [];
+        for (let i = 0; i < novoEstado.length; i++) {
+          if (novoEstado[i] === "") {
+            novoEstado[i] = jogadorMax ? "O" : "X";
+            const resultado = minimax(novoEstado, !jogadorMax);
+            jogadas.push({ index: i, score: resultado.score });
+            novoEstado[i] = "";
+          }
+        }
+
+        return jogadorMax
+          ? jogadas.reduce((a, b) => (a.score > b.score ? a : b))
+          : jogadas.reduce((a, b) => (a.score < b.score ? a : b));
+      }
+
+      const melhor = minimax([...estado], true);
+      return melhor.index;
+    }
+
+    function checarVencedor(est) {
+      for (let [a, b, c] of combinacoesVitoria) {
+        if (est[a] && est[a] === est[b] && est[a] === est[c]) return est[a];
+      }
+      return est.includes("") ? null : "empate";
+    }
+
+    function verificarVencedor(jogador) {
+      for (let combinacao of combinacoesVitoria) {
+        const [a, b, c] = combinacao;
+        if (estado[a] === jogador && estado[b] === jogador && estado[c] === jogador) {
+          mensagem.textContent = `Jogador ${jogador} venceu!`;
+          jogoAtivo = false;
+          return true;
+        }
+      }
+
+      if (!estado.includes("")) {
+        mensagem.textContent = "Empate!";
+        jogoAtivo = false;
+        return true;
+      }
+
+      return false;
+    }
+
+    function reiniciarJogo(manterModo = false) {
+      estado = ["", "", "", "", "", "", "", "", ""];
+      jogadorAtual = "X";
+      jogoAtivo = true;
+      criarTabuleiro();
+      mensagem.textContent = "Vez do jogador X";
+    }
+
+    function voltarMenu() {
+      tabuleiro.style.display = "none";
+      controles.style.display = "none";
+      mensagem.textContent = "";
+      menu.style.display = "block";
+    }
+  </script>
+</body>
+</html>
